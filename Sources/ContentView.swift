@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var store: TaskStore
     @EnvironmentObject var timer: PomodoroTimer
+    @EnvironmentObject var quotes: DailyQuoteStore
     @State private var newTitle = ""
 
     var body: some View {
@@ -60,6 +61,15 @@ struct ContentView: View {
                         .controlSize(.small)
                 }
                 .padding(.top, 6)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\u{201C}\(quotes.quote.content)\u{201D}")
+                    .font(.callout.italic())
+                Text("\u{2014} \(quotes.quote.author)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
