@@ -1,11 +1,11 @@
 #!/bin/bash
-# Builds "Stream of change.app" and puts it on your Desktop.
+# Builds "Stream of change.app" and installs it in /Applications.
 # Requires Xcode command line tools (xcode-select --install).
 set -e
 cd "$(dirname "$0")"
 swift build -c release
 
-APP="$HOME/Desktop/Stream of change.app"
+APP="/Applications/Stream of change.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/StreamOfChange "$APP/Contents/MacOS/"
@@ -21,3 +21,4 @@ done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 touch "$APP"
 echo "Built: $APP"
+echo "Run it with: open \"$APP\""
