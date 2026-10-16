@@ -79,18 +79,36 @@ struct ContentView: View {
             HStack {
                 TextField("New task", text: $newTitle)
                     .textFieldStyle(.roundedBorder)
-                    .onSubmit(addTask)
-                Button("Add", action: addTask)
+                    .onSubmit { addTask(backlog: false) }
+                Button("Add to Today") { addTask(backlog: false) }
+                    .disabled(newTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+                Button("Backlog") { addTask(backlog: true) }
                     .disabled(newTitle.trimmingCharacters(in: .whitespaces).isEmpty)
             }
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(store.roots) { item in
-                        TodoRow(item: item)
-                    }
+                VStack(alignment: .leading, spacing: 14) {
+                    section(title: "Today", backlog: false)
+                    section(title: "Backlog", backlog: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private func section(title: String, backlog: Bool) -> some View {
+        let tasks = store.roots(backlog: backlog)
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("\(title) (\(tasks.count))")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+            if tasks.isEmpty {
+                Text(backlog ? "Nothing in the backlog." : "Nothing planned for today.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(tasks) { item in
+                TodoRow(item: item)
             }
         }
     }
@@ -121,8 +139,8 @@ struct ContentView: View {
         }
     }
 
-    private func addTask() {
-        store.add(newTitle)
+    private func addTask(backlog: Bool) {
+        store.add(newTitle, backlog: backlog)
         newTitle = ""
     }
 }
@@ -149,6 +167,12 @@ struct TodoRow: View {
                 Spacer()
 
                 pomodoroControls
+
+                Button { store.move(item.id) } label: {
+                    Image(systemName: item.isBacklog ? "arrow.up.circle" : "archivebox")
+                }
+                .buttonStyle(.plain)
+                .help(item.isBacklog ? "Move to Today" : "Move to Backlog")
 
                 Button { showingSubtask.toggle() } label: {
                     Image(systemName: "plus.bubble")
