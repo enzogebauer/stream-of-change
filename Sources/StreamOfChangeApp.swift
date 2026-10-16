@@ -13,5 +13,14 @@ struct StreamOfChangeApp: App {
                 .frame(minWidth: 700, minHeight: 520)
         }
         .windowResizability(.contentMinSize)
+
+        MenuBarExtra {
+            MenuBarView()
+                .environmentObject(timer)
+        } label: {
+            MenuBarLabel()
+                .environmentObject(timer)
+        }
+        .menuBarExtraStyle(.menu)
     }
 }

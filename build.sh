@@ -10,6 +10,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/StreamOfChange "$APP/Contents/MacOS/"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp Resources/MenuBarIcon.png "$APP/Contents/Resources/"
 
 ICONSET="$(mktemp -d)/AppIcon.iconset"
 mkdir -p "$ICONSET"
