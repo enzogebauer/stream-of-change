@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="flow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6B6672"/>
+      <stop offset="1" stop-color="#E4572E"/>
+    </linearGradient>
+  </defs>
+
+  <!-- background -->
+  <rect width="1024" height="1024" rx="220" fill="#17151C"/>
+
+  <!-- the river: the current that carries everything -->
+  <path d="M150,512 C300,380 420,644 512,512 S724,380 874,512"
+        fill="none" stroke="url(#flow)" stroke-width="6" stroke-linecap="round" opacity="0.35"/>
+
+  <!-- the self in motion: early forms are soft dots, later forms become defined squares -->
+  <circle cx="180" cy="512" r="18" fill="#6B6672"/>
+  <circle cx="270" cy="440" r="24" fill="#7D7685"/>
+  <circle cx="370" cy="560" r="30" fill="#9A6F7A"/>
+  <rect x="444" y="424" width="72" height="72" rx="22" fill="#B8604F"/>
+  <rect x="558" y="518" width="84" height="84" rx="26" fill="#CE5A3E"/>
+  <rect x="672" y="402" width="96" height="96" rx="30" fill="#DC5635"/>
+  <rect x="794" y="456" width="112" height="112" rx="36" fill="#E4572E"/>
+</svg>
