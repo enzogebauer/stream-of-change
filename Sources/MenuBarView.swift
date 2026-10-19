@@ -31,6 +31,7 @@ enum MenuBarIcon {
 /// The menu that opens when clicking the menu bar item.
 struct MenuBarView: View {
     @EnvironmentObject var timer: PomodoroTimer
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Text("\(timer.mode.rawValue) · \(timer.display)")
@@ -60,6 +61,11 @@ struct MenuBarView: View {
         Button("Show Stream of change") {
             NSApp.activate(ignoringOtherApps: true)
             NSApp.windows.first { $0.canBecomeMain }?.makeKeyAndOrderFront(nil)
+        }
+
+        Button("Edit Tasks as JSON…") {
+            openWindow(id: "json-editor")
+            NSApp.activate(ignoringOtherApps: true)
         }
 
         Button("Quit") { NSApp.terminate(nil) }

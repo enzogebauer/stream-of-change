@@ -8,9 +8,10 @@ struct TodoItem: Identifiable, Codable, Equatable {
     var estimate: Int      // pomodoros planned
     var spent: Int         // pomodoros finished
     var isBacklog: Bool    // false = Today, true = Backlog
+    var completedAt: Date? // set when checked off, nil when open
 
     init(id: UUID = UUID(), title: String, isDone: Bool = false, parentID: UUID? = nil,
-         estimate: Int = 1, spent: Int = 0, isBacklog: Bool = false) {
+         estimate: Int = 1, spent: Int = 0, isBacklog: Bool = false, completedAt: Date? = nil) {
         self.id = id
         self.title = title
         self.isDone = isDone
@@ -18,6 +19,7 @@ struct TodoItem: Identifiable, Codable, Equatable {
         self.estimate = estimate
         self.spent = spent
         self.isBacklog = isBacklog
+        self.completedAt = completedAt
     }
 
     // Missing fields fall back to defaults, so tasks saved by older versions still load.
@@ -30,7 +32,30 @@ struct TodoItem: Identifiable, Codable, Equatable {
         estimate = try c.decodeIfPresent(Int.self, forKey: .estimate) ?? 1
         spent = try c.decodeIfPresent(Int.self, forKey: .spent) ?? 0
         isBacklog = try c.decodeIfPresent(Bool.self, forKey: .isBacklog) ?? false
+        completedAt = try c.decodeIfPresent(Date.self, forKey: .completedAt)
     }
+}
+
+/// Dates are stored as ISO 8601 strings, so they're readable in the JSON editor.
+enum TaskJSON {
+    static func encoder() -> JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }
+
+    static func decoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }
+}
+
+/// One day's finished tasks in the Done section.
+struct DoneGroup: Identifiable {
+    let day: Date?   // nil = finished before dates were recorded
+    let tasks: [TodoItem]
+    var id: String { day.map { String($0.timeIntervalSince1970) } ?? "undated" }
 }
 
 @MainActor
@@ -48,7 +73,7 @@ final class TaskStore: ObservableObject {
 
     init() {
         if let data = try? Data(contentsOf: fileURL),
-           let decoded = try? JSONDecoder().decode([TodoItem].self, from: data) {
+           let decoded = try? TaskJSON.decoder().decode([TodoItem].self, from: data) {
             items = decoded
         } else {
             items = TaskStore.seed
@@ -57,8 +82,35 @@ final class TaskStore: ObservableObject {
 
     /// Top-level tasks in the Today or Backlog section.
     func roots(backlog: Bool) -> [TodoItem] {
-        items.filter { $0.parentID == nil && $0.isBacklog == backlog }
+        items.filter { $0.parentID == nil && $0.isBacklog == backlog && !$0.isDone }
     }
+
+    /// Top-level tasks that are checked off.
+    var doneRoots: [TodoItem] { items.filter { $0.parentID == nil && $0.isDone } }
+
+    /// Done tasks grouped by the day they were checked off, newest first.
+    /// Tasks finished before dates were recorded go into the last group.
+    func doneGroups() -> [DoneGroup] {
+        let calendar = Calendar.current
+        let byDay = Dictionary(grouping: doneRoots.filter { $0.completedAt != nil }) {
+            calendar.startOfDay(for: $0.completedAt!)
+        }
+        var groups = byDay.keys.sorted(by: >).map { day in
+            DoneGroup(day: day, tasks: byDay[day]!.sorted { $0.completedAt! > $1.completedAt! })
+        }
+        let undated = doneRoots.filter { $0.completedAt == nil }
+        if !undated.isEmpty { groups.append(DoneGroup(day: nil, tasks: undated)) }
+        return groups
+    }
+
+    /// Top-level tasks checked off since `start`.
+    func doneCount(since start: Date) -> Int {
+        doneRoots.filter { ($0.completedAt ?? .distantPast) >= start }.count
+    }
+
+    /// Pomodoros logged across all tasks.
+    var pomodorosLogged: Int { items.reduce(0) { $0 + $1.spent } }
+
 
     func children(of id: UUID) -> [TodoItem] { items.filter { $0.parentID == id } }
 
@@ -75,7 +127,10 @@ final class TaskStore: ObservableObject {
     }
 
     func toggle(_ id: UUID) {
-        update(id) { $0.isDone.toggle() }
+        update(id) {
+            $0.isDone.toggle()
+            $0.completedAt = $0.isDone ? Date() : nil
+        }
     }
 
     /// Moves a task and its subtasks between Today and Backlog.
@@ -87,6 +142,29 @@ final class TaskStore: ObservableObject {
         }
     }
 
+    /// Moves a top-level task (with its subtasks) to just before another top-level task.
+    /// If the target is in the other section, the task moves there too.
+    func reorder(_ draggedID: UUID, before targetID: UUID) {
+        guard draggedID != targetID,
+              let dragged = items.first(where: { $0.id == draggedID }), dragged.parentID == nil,
+              let target = items.first(where: { $0.id == targetID }), target.parentID == nil else { return }
+        var block = items.filter { $0.id == draggedID || $0.parentID == draggedID }
+        for i in block.indices { block[i].isBacklog = target.isBacklog }
+        var rest = items.filter { $0.id != draggedID && $0.parentID != draggedID }
+        guard let index = rest.firstIndex(where: { $0.id == targetID }) else { return }
+        rest.insert(contentsOf: block, at: index)
+        items = rest
+    }
+
+    /// Moves a top-level task (with its subtasks) to the end of the Today or Backlog section.
+    func moveToEnd(_ draggedID: UUID, backlog: Bool) {
+        guard let dragged = items.first(where: { $0.id == draggedID }), dragged.parentID == nil else { return }
+        var block = items.filter { $0.id == draggedID || $0.parentID == draggedID }
+        for i in block.indices { block[i].isBacklog = backlog }
+        let rest = items.filter { $0.id != draggedID && $0.parentID != draggedID }
+        items = rest + block
+    }
+
     func update(_ id: UUID, _ change: (inout TodoItem) -> Void) {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         change(&items[index])
@@ -96,8 +174,23 @@ final class TaskStore: ObservableObject {
         items.removeAll { $0.id == id || $0.parentID == id }
     }
 
+    /// All tasks as pretty-printed JSON text.
+    func exportJSON() -> String {
+        let encoder = TaskJSON.encoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let data = try? encoder.encode(items), let text = String(data: data, encoding: .utf8) else {
+            return "[]"
+        }
+        return text
+    }
+
+    /// Replaces all tasks with the JSON text. Throws if the text isn't a valid task list.
+    func importJSON(_ text: String) throws {
+        items = try TaskJSON.decoder().decode([TodoItem].self, from: Data(text.utf8))
+    }
+
     private func save() {
-        guard let data = try? JSONEncoder().encode(items) else { return }
+        guard let data = try? TaskJSON.encoder().encode(items) else { return }
         try? data.write(to: fileURL, options: .atomic)
     }
 

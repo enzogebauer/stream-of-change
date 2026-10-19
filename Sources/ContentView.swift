@@ -1,12 +1,24 @@
 import SwiftUI
+import AppKit
 
 struct ContentView: View {
     @EnvironmentObject var store: TaskStore
     @EnvironmentObject var timer: PomodoroTimer
     @EnvironmentObject var quotes: DailyQuoteStore
+    @Environment(\.openWindow) private var openWindow
     @State private var newTitle = ""
+    @State private var focusMode = false
 
     var body: some View {
+        if focusMode {
+            FocusView { setFocus(false) }
+                .tint(.ember)
+        } else {
+            mainLayout
+        }
+    }
+
+    private var mainLayout: some View {
         HStack(alignment: .top, spacing: 0) {
             timerPanel
                 .frame(width: 280)
@@ -81,8 +93,15 @@ struct ContentView: View {
 
     private var todoPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Stream of change")
-                .font(.title2.bold())
+            HStack {
+                Text("Stream of change")
+                    .font(.title2.bold())
+                Spacer()
+                Button("Focus") { setFocus(true) }
+                    .help("Full screen: only the time and today's tasks")
+                Button("Edit JSON") { openWindow(id: "json-editor") }
+                    .help("Edit all tasks as JSON, e.g. with an AI assistant")
+            }
 
             summary
 
@@ -100,8 +119,40 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     section(title: "Today", backlog: false)
                     section(title: "Backlog", backlog: true)
+                    doneSection
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private var doneSection: some View {
+        let calendar = Calendar.current
+        let startOfToday = calendar.startOfDay(for: Date())
+        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? startOfToday
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("Done (\(store.doneRoots.count))")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 24) {
+                stat("Done today", "\(store.doneCount(since: startOfToday))")
+                stat("Done this week", "\(store.doneCount(since: startOfWeek))")
+                stat("Pomodoros logged", "\(store.pomodorosLogged)")
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 10).fill(.quaternary.opacity(0.5)))
+
+            ForEach(store.doneGroups()) { group in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(group.day.map { $0.formatted(date: .complete, time: .omitted) } ?? "Finished before dates were recorded")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.secondary)
+                    ForEach(group.tasks) { task in
+                        TodoRow(item: task)
+                    }
+                }
             }
         }
     }
@@ -119,7 +170,19 @@ struct ContentView: View {
             }
             ForEach(tasks) { item in
                 TodoRow(item: item)
+                    .draggable(item.id.uuidString)
+                    .dropDestination(for: String.self) { ids, _ in
+                        guard let id = ids.first.flatMap(UUID.init(uuidString:)) else { return false }
+                        store.reorder(id, before: item.id)
+                        return true
+                    }
             }
+        }
+        .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
+        .dropDestination(for: String.self) { ids, _ in
+            guard let id = ids.first.flatMap(UUID.init(uuidString:)) else { return false }
+            store.moveToEnd(id, backlog: backlog)
+            return true
         }
     }
 
@@ -146,6 +209,15 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.caption).foregroundStyle(.secondary)
             Text(value).font(.title3.bold()).monospacedDigit()
+        }
+    }
+
+    /// Switches focus mode and puts the window in or out of full screen.
+    private func setFocus(_ on: Bool) {
+        focusMode = on
+        if let window = NSApp.keyWindow ?? NSApp.windows.first,
+           window.styleMask.contains(.fullScreen) != on {
+            window.toggleFullScreen(nil)
         }
     }
 

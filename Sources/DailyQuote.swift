@@ -6,7 +6,8 @@ struct Quote: Equatable {
 }
 
 /// One quote per day from the free Quotable API (philosophy, science, wisdom).
-/// The day's quote is cached, so it stays the same all day. Offline, a built-in quote is shown.
+/// The day's quote is cached. The app checks every 10 minutes and whenever it becomes active,
+/// so the quote changes at midnight even if the app stays open.
 @MainActor
 final class DailyQuoteStore: ObservableObject {
     @Published private(set) var quote: Quote
@@ -14,6 +15,7 @@ final class DailyQuoteStore: ObservableObject {
     private static let dayKey = "quoteDay"
     private static let textKey = "quoteText"
     private static let authorKey = "quoteAuthor"
+    private static let refreshInterval: TimeInterval = 600
 
     /// Used when the API can't be reached. Rotates by day of the year.
     private static let fallback: [Quote] = [
@@ -22,6 +24,8 @@ final class DailyQuoteStore: ObservableObject {
         Quote(content: "Somewhere, something incredible is waiting to be known.", author: "Carl Sagan"),
         Quote(content: "We are what we repeatedly do. Excellence, then, is not an act, but a habit.", author: "Aristotle")
     ]
+
+    private var refreshTimer: Timer?
 
     init() {
         let defaults = UserDefaults.standard
@@ -32,9 +36,18 @@ final class DailyQuoteStore: ObservableObject {
         } else {
             quote = DailyQuoteStore.fallback[DailyQuoteStore.dayIndex() % DailyQuoteStore.fallback.count]
         }
+        startAutoRefresh()
     }
 
-    /// Fetches today's quote once. If the request fails, the fallback stays and it retries next launch.
+    /// Re-checks periodically, so a new day brings a new quote without a restart.
+    private func startAutoRefresh() {
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: DailyQuoteStore.refreshInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in await self?.refreshIfNeeded() }
+        }
+    }
+
+    /// Fetches today's quote once per day. Offline on a new day, it shows today's built-in quote
+    /// instead of yesterday's, and tries the API again at the next check.
     func refreshIfNeeded() async {
         let today = DailyQuoteStore.todayKey()
         let defaults = UserDefaults.standard
@@ -45,6 +58,8 @@ final class DailyQuoteStore: ObservableObject {
             defaults.set(fresh.content, forKey: DailyQuoteStore.textKey)
             defaults.set(fresh.author, forKey: DailyQuoteStore.authorKey)
             quote = fresh
+        } else {
+            quote = DailyQuoteStore.fallback[DailyQuoteStore.dayIndex() % DailyQuoteStore.fallback.count]
         }
     }
 
