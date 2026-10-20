@@ -288,6 +288,20 @@ struct TodoRow: View {
     }
 
     private var pomodoroControls: some View {
+        Group {
+            if store.children(of: item.id).isEmpty {
+                leafPomodoroControls
+            } else {
+                Text("\(store.spent(of: item))/\(store.estimate(of: item)) 🍅")
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .help("Total of its subtasks")
+            }
+        }
+    }
+
+    private var leafPomodoroControls: some View {
         HStack(spacing: 4) {
             Button { store.update(item.id) { $0.estimate = max(1, $0.estimate - 1) } } label: {
                 Image(systemName: "minus.circle")

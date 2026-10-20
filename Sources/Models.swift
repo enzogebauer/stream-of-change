@@ -109,14 +109,31 @@ final class TaskStore: ObservableObject {
     }
 
     /// Pomodoros logged across all tasks.
-    var pomodorosLogged: Int { items.reduce(0) { $0 + $1.spent } }
+    var pomodorosLogged: Int { items.filter { isLeaf($0) }.reduce(0) { $0 + $1.spent } }
+
+    /// A task with no subtasks. Only these hold pomodoros; a parent shows the sum of its subtasks.
+    func isLeaf(_ item: TodoItem) -> Bool {
+        !items.contains { $0.parentID == item.id }
+    }
+
+    /// Planned pomodoros for a task, including all of its subtasks.
+    func estimate(of item: TodoItem) -> Int {
+        let kids = children(of: item.id)
+        return kids.isEmpty ? item.estimate : kids.reduce(0) { $0 + estimate(of: $1) }
+    }
+
+    /// Finished pomodoros for a task, including all of its subtasks.
+    func spent(of item: TodoItem) -> Int {
+        let kids = children(of: item.id)
+        return kids.isEmpty ? item.spent : kids.reduce(0) { $0 + spent(of: $1) }
+    }
 
 
     func children(of id: UUID) -> [TodoItem] { items.filter { $0.parentID == id } }
 
     /// Pomodoros still needed across unfinished Today tasks.
     var pendingPomodoros: Int {
-        items.filter { !$0.isDone && !$0.isBacklog }.reduce(0) { $0 + max($1.estimate - $1.spent, 0) }
+        items.filter { isLeaf($0) && !$0.isDone && !$0.isBacklog }.reduce(0) { $0 + max($1.estimate - $1.spent, 0) }
     }
 
     func add(_ title: String, parent: UUID? = nil, backlog: Bool = false) {

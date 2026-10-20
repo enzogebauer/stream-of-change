@@ -104,7 +104,13 @@ final class PomodoroTimer: ObservableObject {
         if remaining == 0 {
             if mode == .focus { completedFocusSessions += 1 }
             pause()
-            NSSound.beep()
+            if mode == .longBreak {
+                // Long break is over: play a louder sound and bounce the Dock icon until the app is opened.
+                NSSound(named: "Hero")?.play()
+                NSApp.requestUserAttention(.criticalRequest)
+            } else {
+                NSSound.beep()
+            }
         }
     }
 }
