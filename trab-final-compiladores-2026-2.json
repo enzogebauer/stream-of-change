@@ -1,0 +1,173 @@
+[
+  {
+    "id": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "title": "trab final compiladores 2026.2",
+    "isDone": false,
+    "parentID": null,
+    "estimate": 18.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "9AE63496-C85E-40EE-BEDE-7979B5961BD0",
+    "title": "Ler a especificação e listar as dúvidas para a aula, Google Classroom ou Canvas",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "35993B98-0C87-42D2-A18C-3729132FE06A",
+    "title": "Entender a linguagem BobEnzo2026-1 e escrever textos-fonte de teste para comparar com a especificação",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "1C705B0E-B833-4DE3-BD1C-F4FF9E1FEBDF",
+    "title": "Projetar e iniciar a implementação do Static Checker",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "5F09003E-444C-4765-ACCD-56BB0512E78F",
+    "title": "Planejar as rotinas do analisador léxico isolado",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "A5322311-05B3-4A42-861E-43D3A0708815",
+    "title": "Planejar as rotinas da tabela de símbolos isolada",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "65B53F72-7A7C-4DC2-929B-E80BC3B9A629",
+    "title": "Planejar as rotinas gerais para o analisador léxico e a tabela de símbolos funcionarem juntos",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "444E71F9-7534-4DA9-A935-09F8A0FA5327",
+    "title": "Documentar o projeto da implementação (módulos, rotinas e informações da entrega 1)",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "B2CDBB0F-044F-4FFC-A433-7BE8C3C38B68",
+    "title": "Implementar inicialização, abertura do texto fonte, análise léxica, tabela de símbolos e controle de escopo (parte 1)",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "FAB61629-8D9B-4E6C-B921-2C5B1B95DDF4",
+    "title": "Completar a implementação do passo 8",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "025490B4-8529-47F9-A49E-41AE36F6E155",
+    "title": "Testar o código implementado",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "46864D24-C780-4C21-A37D-F6FDC98CDE68",
+    "title": "Entrega 2: transformar a gramática fornecida para BNF",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "E97F4032-1AD1-4D71-9AC9-CF8A240BC593",
+    "title": "Entrega 3: transformar a BNF do passo 11 para a notação de Wirth, eliminando recursão",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "E82A25D5-956C-402F-8D95-FD0492DE0BE1",
+    "title": "Entrega 4: simplificar a notação de Wirth, deixando só os não terminais auto-recursivos centrais",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "567A9A24-B880-43DA-A36C-C70886C808EE",
+    "title": "Transformar a gramática em autômatos brutos equivalentes",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "D2FA18B7-B82E-42F7-99E3-C9BA52271A1D",
+    "title": "Entrega 5: situação final da gramática e autômatos brutos em tabelas de transição",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "6DC13CCB-C0B9-4D8B-AB1F-5F8C999A4F63",
+    "title": "Transformar os autômatos brutos em autômatos ótimos equivalentes",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "550D1D54-92C4-432A-80F7-C4F63CCEDB04",
+    "title": "Entrega 6: autômatos ótimos em tabela e diagrama, com o planejamento atualizado das rotinas",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  },
+  {
+    "id": "C6A2D128-630D-4048-9B0C-37267304E1B6",
+    "title": "Entrega 7: código com análise léxica, tabela de símbolos, programa principal, executável, relatórios e documentação",
+    "isDone": false,
+    "parentID": "F8BB7FB2-8082-4640-8FD9-809814DC92CE",
+    "estimate": 1.0,
+    "spent": 0.0,
+    "isBacklog": true
+  }
+]

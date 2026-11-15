@@ -18,12 +18,14 @@ struct StreamOfChangeApp: App {
                     Task { await quotes.refreshIfNeeded() }
                 }
                 .frame(minWidth: 700, minHeight: 520)
+                .preferredColorScheme(.light)
         }
         .windowResizability(.contentMinSize)
 
         Window("Edit tasks as JSON", id: "json-editor") {
             JSONEditorView()
                 .environmentObject(store)
+                .preferredColorScheme(.light)
         }
 
         MenuBarExtra {

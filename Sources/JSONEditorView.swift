@@ -12,7 +12,7 @@ struct JSONEditorView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Tasks as JSON")
                 .font(.headline)
-            Text("Each task has: id, title, isDone, parentID (null for top-level tasks), estimate, spent, isBacklog, completedAt (ISO date or null). Keep every id unique. Copy the text into an AI assistant, paste its edited version here, and press Save.")
+            Text("Each task has: id, title, isDone, parentID (null for top-level tasks), estimate, spent (in rivers, where 1 river = one focus block; decimals allowed, e.g. 0.25), isBacklog, completedAt (ISO date or null). Keep every id unique. Copy the text into an AI assistant, paste its edited version here, and press Save.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 

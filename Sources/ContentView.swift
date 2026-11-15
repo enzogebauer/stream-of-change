@@ -12,7 +12,7 @@ struct ContentView: View {
     var body: some View {
         if focusMode {
             FocusView { setFocus(false) }
-                .tint(.ember)
+                .tint(.black)
         } else {
             mainLayout
         }
@@ -30,7 +30,7 @@ struct ContentView: View {
                 .padding(24)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .tint(.ember)
+        .tint(.black)
     }
 
     // MARK: Timer
@@ -79,7 +79,7 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("\u{201C}\(quotes.quote.content)\u{201D}")
                     .font(.callout.italic())
-                Text("\u{2014} \(quotes.quote.author)")
+                Text("\u{2014} \(quotes.quote.author) · \(quotes.quote.field)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -138,7 +138,7 @@ struct ContentView: View {
             HStack(spacing: 24) {
                 stat("Done today", "\(store.doneCount(since: startOfToday))")
                 stat("Done this week", "\(store.doneCount(since: startOfWeek))")
-                stat("Pomodoros logged", "\(store.pomodorosLogged)")
+                stat("Rivers logged", riverText(store.riversLogged))
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -150,7 +150,7 @@ struct ContentView: View {
                         .font(.subheadline.bold())
                         .foregroundStyle(.secondary)
                     ForEach(group.tasks) { task in
-                        TodoRow(item: task)
+                        TodoRow(item: task, showsHandle: false)
                     }
                 }
             }
@@ -170,10 +170,9 @@ struct ContentView: View {
             }
             ForEach(tasks) { item in
                 TodoRow(item: item)
-                    .draggable(item.id.uuidString)
                     .dropDestination(for: String.self) { ids, _ in
                         guard let id = ids.first.flatMap(UUID.init(uuidString:)) else { return false }
-                        store.reorder(id, before: item.id)
+                        store.reorder(id, onto: item.id)
                         return true
                     }
             }
@@ -189,15 +188,15 @@ struct ContentView: View {
     private var summary: some View {
         TimelineView(.everyMinute) { context in
             let total = Planner.totalSeconds(
-                pomodoros: store.pendingPomodoros,
+                rivers: store.pendingRivers,
                 completedSoFar: timer.completedFocusSessions,
                 durations: timer.durations
             )
             let finish = context.date.addingTimeInterval(TimeInterval(total))
             HStack(spacing: 24) {
-                stat("Pomodoros left", "\(store.pendingPomodoros)")
+                stat("Rivers left", riverText(store.pendingRivers))
                 stat("Time needed", Planner.formatDuration(total))
-                stat("Done around", store.pendingPomodoros == 0 ? "—" : finish.formatted(date: .omitted, time: .shortened))
+                stat("Done around", store.pendingRivers == 0 ? "—" : finish.formatted(date: .omitted, time: .shortened))
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -229,16 +228,28 @@ struct ContentView: View {
 
 struct TodoRow: View {
     let item: TodoItem
+    var showsHandle: Bool = true
     @EnvironmentObject var store: TaskStore
+    @EnvironmentObject var timer: PomodoroTimer
+    @State private var showingRiver = false
     @State private var showingSubtask = false
     @State private var subtaskTitle = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
+                if showsHandle && item.parentID == nil {
+                    Image(systemName: "line.3.horizontal")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 14)
+                        .contentShape(Rectangle())
+                        .draggable(item.id.uuidString)
+                        .help("Drag to reorder")
+                }
+
                 Button { store.toggle(item.id) } label: {
                     Image(systemName: item.isDone ? "checkmark.square.fill" : "square")
-                        .foregroundStyle(item.isDone ? Color.ember : .secondary)
+                        .foregroundStyle(item.isDone ? Color.primary : .secondary)
                 }
                 .buttonStyle(.plain)
 
@@ -248,7 +259,7 @@ struct TodoRow: View {
 
                 Spacer()
 
-                pomodoroControls
+                riverControls
 
                 Button { store.move(item.id) } label: {
                     Image(systemName: item.isBacklog ? "arrow.up.circle" : "archivebox")
@@ -287,46 +298,41 @@ struct TodoRow: View {
         }
     }
 
-    private var pomodoroControls: some View {
-        Group {
+    /// The river icon with logged/planned rivers. Clicking it opens the editor popover.
+    private var riverControls: some View {
+        let planned = store.estimate(of: item)
+        let logged = store.spent(of: item)
+        return HStack(spacing: 6) {
+            Button { showingRiver.toggle() } label: {
+                HStack(spacing: 6) {
+                    RiverGlyph(progress: planned > 0 ? logged / planned : 0, lineWidth: 1.8)
+                        .frame(width: 24, height: 16)
+                    Text("\(riverText(logged))/\(riverText(planned))")
+                        .font(.caption)
+                        .monospacedDigit()
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary.opacity(0.5)))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Set rivers or time for this task")
+            .popover(isPresented: $showingRiver, arrowEdge: .bottom) {
+                RiverEditor(itemID: item.id) { showingRiver = false }
+                    .environmentObject(store)
+                    .environmentObject(timer)
+            }
+
             if store.children(of: item.id).isEmpty {
-                leafPomodoroControls
-            } else {
-                Text("\(store.spent(of: item))/\(store.estimate(of: item)) 🍅")
-                    .font(.caption)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    .help("Total of its subtasks")
+                Button { store.logRiver(item.id) } label: {
+                    Image(systemName: "checkmark.circle")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("Log a finished river")
             }
         }
-    }
-
-    private var leafPomodoroControls: some View {
-        HStack(spacing: 4) {
-            Button { store.update(item.id) { $0.estimate = max(1, $0.estimate - 1) } } label: {
-                Image(systemName: "minus.circle")
-            }
-            .buttonStyle(.plain)
-            .help("Fewer planned pomodoros")
-
-            Text("\(item.spent)/\(item.estimate) 🍅")
-                .font(.caption)
-                .monospacedDigit()
-                .frame(minWidth: 52)
-
-            Button { store.update(item.id) { $0.estimate += 1 } } label: {
-                Image(systemName: "plus.circle")
-            }
-            .buttonStyle(.plain)
-            .help("More planned pomodoros")
-
-            Button { store.update(item.id) { $0.spent += 1 } } label: {
-                Image(systemName: "checkmark.circle")
-            }
-            .buttonStyle(.plain)
-            .help("Log a finished pomodoro")
-        }
-        .foregroundStyle(.secondary)
     }
 }
 
@@ -366,9 +372,4 @@ struct DurationField: View {
         }
         text = String(minutes)
     }
-}
-
-extension Color {
-    /// The ember orange from the app icon (#E4572E).
-    static let ember = Color(red: 0.894, green: 0.341, blue: 0.180)
 }

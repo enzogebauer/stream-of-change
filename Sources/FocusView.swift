@@ -29,14 +29,14 @@ struct FocusView: View {
 
             TimelineView(.everyMinute) { context in
                 let total = Planner.totalSeconds(
-                    pomodoros: store.pendingPomodoros,
+                    rivers: store.pendingRivers,
                     completedSoFar: timer.completedFocusSessions,
                     durations: timer.durations
                 )
                 let finish = context.date.addingTimeInterval(TimeInterval(total))
-                Text(store.pendingPomodoros == 0
+                Text(store.pendingRivers == 0
                      ? "Nothing left for today"
-                     : "\(store.pendingPomodoros) pomodoros · \(Planner.formatDuration(total)) with breaks · done around \(finish.formatted(date: .omitted, time: .shortened))")
+                     : "\(riverText(store.pendingRivers)) rivers · \(Planner.formatDuration(total)) with breaks · done around \(finish.formatted(date: .omitted, time: .shortened))")
                     .font(.title3)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()

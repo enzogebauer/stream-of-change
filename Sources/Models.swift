@@ -5,13 +5,13 @@ struct TodoItem: Identifiable, Codable, Equatable {
     var title: String
     var isDone: Bool
     var parentID: UUID?
-    var estimate: Int      // pomodoros planned
-    var spent: Int         // pomodoros finished
+    var estimate: Double      // rivers planned
+    var spent: Double         // rivers finished
     var isBacklog: Bool    // false = Today, true = Backlog
     var completedAt: Date? // set when checked off, nil when open
 
     init(id: UUID = UUID(), title: String, isDone: Bool = false, parentID: UUID? = nil,
-         estimate: Int = 1, spent: Int = 0, isBacklog: Bool = false, completedAt: Date? = nil) {
+         estimate: Double = 1, spent: Double = 0, isBacklog: Bool = false, completedAt: Date? = nil) {
         self.id = id
         self.title = title
         self.isDone = isDone
@@ -29,8 +29,8 @@ struct TodoItem: Identifiable, Codable, Equatable {
         title = try c.decode(String.self, forKey: .title)
         isDone = try c.decodeIfPresent(Bool.self, forKey: .isDone) ?? false
         parentID = try c.decodeIfPresent(UUID.self, forKey: .parentID)
-        estimate = try c.decodeIfPresent(Int.self, forKey: .estimate) ?? 1
-        spent = try c.decodeIfPresent(Int.self, forKey: .spent) ?? 0
+        estimate = try c.decodeIfPresent(Double.self, forKey: .estimate) ?? 1
+        spent = try c.decodeIfPresent(Double.self, forKey: .spent) ?? 0
         isBacklog = try c.decodeIfPresent(Bool.self, forKey: .isBacklog) ?? false
         completedAt = try c.decodeIfPresent(Date.self, forKey: .completedAt)
     }
@@ -108,32 +108,40 @@ final class TaskStore: ObservableObject {
         doneRoots.filter { ($0.completedAt ?? .distantPast) >= start }.count
     }
 
-    /// Pomodoros logged across all tasks.
-    var pomodorosLogged: Int { items.filter { isLeaf($0) }.reduce(0) { $0 + $1.spent } }
+    /// Rivers logged across all tasks.
+    var riversLogged: Double { items.filter { isLeaf($0) }.reduce(0.0) { $0 + $1.spent } }
 
-    /// A task with no subtasks. Only these hold pomodoros; a parent shows the sum of its subtasks.
+    /// A task with no subtasks. Only these hold rivers; a parent shows the sum of its subtasks.
     func isLeaf(_ item: TodoItem) -> Bool {
         !items.contains { $0.parentID == item.id }
     }
 
-    /// Planned pomodoros for a task, including all of its subtasks.
-    func estimate(of item: TodoItem) -> Int {
+    /// Planned rivers for a task, including all of its subtasks.
+    func estimate(of item: TodoItem) -> Double {
         let kids = children(of: item.id)
-        return kids.isEmpty ? item.estimate : kids.reduce(0) { $0 + estimate(of: $1) }
+        return kids.isEmpty ? item.estimate : kids.reduce(0.0) { $0 + estimate(of: $1) }
     }
 
-    /// Finished pomodoros for a task, including all of its subtasks.
-    func spent(of item: TodoItem) -> Int {
+    /// Finished rivers for a task, including all of its subtasks.
+    func spent(of item: TodoItem) -> Double {
         let kids = children(of: item.id)
-        return kids.isEmpty ? item.spent : kids.reduce(0) { $0 + spent(of: $1) }
+        return kids.isEmpty ? item.spent : kids.reduce(0.0) { $0 + spent(of: $1) }
     }
 
 
     func children(of id: UUID) -> [TodoItem] { items.filter { $0.parentID == id } }
 
-    /// Pomodoros still needed across unfinished Today tasks.
-    var pendingPomodoros: Int {
-        items.filter { isLeaf($0) && !$0.isDone && !$0.isBacklog }.reduce(0) { $0 + max($1.estimate - $1.spent, 0) }
+    /// Rivers still needed across unfinished Today tasks.
+    var pendingRivers: Double {
+        roots(backlog: false).reduce(0.0) { $0 + openRivers(in: $1) }
+    }
+
+    /// Rivers still open in a task: its own remaining estimate, or the sum over its subtasks.
+    private func openRivers(in item: TodoItem) -> Double {
+        if item.isDone { return 0 }
+        let kids = children(of: item.id)
+        if kids.isEmpty { return max(item.estimate - item.spent, 0) }
+        return kids.reduce(0.0) { $0 + openRivers(in: $1) }
     }
 
     func add(_ title: String, parent: UUID? = nil, backlog: Bool = false) {
@@ -159,26 +167,49 @@ final class TaskStore: ObservableObject {
         }
     }
 
-    /// Moves a top-level task (with its subtasks) to just before another top-level task.
-    /// If the target is in the other section, the task moves there too.
-    func reorder(_ draggedID: UUID, before targetID: UUID) {
+    /// A task plus all of its subtasks, at any depth.
+    private func subtreeIDs(_ id: UUID) -> Set<UUID> {
+        var ids: Set<UUID> = [id]
+        for kid in children(of: id) { ids.formUnion(subtreeIDs(kid.id)) }
+        return ids
+    }
+
+    /// Moves a top-level task (with its subtasks) next to another top-level task.
+    /// Dragging down places it after the target; dragging up places it before. Crossing sections changes its section.
+    func reorder(_ draggedID: UUID, onto targetID: UUID) {
         guard draggedID != targetID,
               let dragged = items.first(where: { $0.id == draggedID }), dragged.parentID == nil,
-              let target = items.first(where: { $0.id == targetID }), target.parentID == nil else { return }
-        var block = items.filter { $0.id == draggedID || $0.parentID == draggedID }
+              let target = items.first(where: { $0.id == targetID }), target.parentID == nil,
+              let draggedIndex = items.firstIndex(where: { $0.id == draggedID }),
+              let targetIndex = items.firstIndex(where: { $0.id == targetID }) else { return }
+
+        let movingDown = draggedIndex < targetIndex
+        let movingIDs = subtreeIDs(draggedID)
+        var block = items.filter { movingIDs.contains($0.id) }
         for i in block.indices { block[i].isBacklog = target.isBacklog }
-        var rest = items.filter { $0.id != draggedID && $0.parentID != draggedID }
-        guard let index = rest.firstIndex(where: { $0.id == targetID }) else { return }
-        rest.insert(contentsOf: block, at: index)
-        items = rest
+        let rest = items.filter { !movingIDs.contains($0.id) }
+
+        let insertAt: Int
+        if movingDown {
+            let targetIDs = subtreeIDs(targetID)
+            guard let last = rest.lastIndex(where: { targetIDs.contains($0.id) }) else { return }
+            insertAt = last + 1
+        } else {
+            guard let first = rest.firstIndex(where: { $0.id == targetID }) else { return }
+            insertAt = first
+        }
+        var result = rest
+        result.insert(contentsOf: block, at: insertAt)
+        items = result
     }
 
     /// Moves a top-level task (with its subtasks) to the end of the Today or Backlog section.
     func moveToEnd(_ draggedID: UUID, backlog: Bool) {
         guard let dragged = items.first(where: { $0.id == draggedID }), dragged.parentID == nil else { return }
-        var block = items.filter { $0.id == draggedID || $0.parentID == draggedID }
+        let movingIDs = subtreeIDs(draggedID)
+        var block = items.filter { movingIDs.contains($0.id) }
         for i in block.indices { block[i].isBacklog = backlog }
-        let rest = items.filter { $0.id != draggedID && $0.parentID != draggedID }
+        let rest = items.filter { !movingIDs.contains($0.id) }
         items = rest + block
     }
 
@@ -204,6 +235,45 @@ final class TaskStore: ObservableObject {
     /// Replaces all tasks with the JSON text. Throws if the text isn't a valid task list.
     func importJSON(_ text: String) throws {
         items = try TaskJSON.decoder().decode([TodoItem].self, from: Data(text.utf8))
+    }
+
+    /// Sets a task's planned rivers. A parent splits its total evenly across its subtasks.
+    /// Changing a subtask updates its parent's total to the sum of its subtasks.
+    func setEstimate(_ id: UUID, to value: Double) {
+        distribute(id, total: max(0, value))
+        refreshParents(from: id)
+    }
+
+    /// Adds or removes a fraction of a river.
+    func adjustEstimate(_ id: UUID, by delta: Double) {
+        guard let item = items.first(where: { $0.id == id }) else { return }
+        setEstimate(id, to: max(0, estimate(of: item) + delta))
+    }
+
+    /// Logs one finished river on a task (less if the task needs less than a full one).
+    func logRiver(_ id: UUID) {
+        update(id) {
+            let remaining = $0.estimate - $0.spent
+            if remaining > 0 { $0.spent += min(1, remaining) }
+        }
+    }
+
+    private func distribute(_ id: UUID, total: Double) {
+        update(id) { $0.estimate = total }
+        let kids = children(of: id)
+        guard !kids.isEmpty else { return }
+        for kid in kids {
+            distribute(kid.id, total: total / Double(kids.count))
+        }
+    }
+
+    private func refreshParents(from id: UUID) {
+        var current = items.first { $0.id == id }?.parentID
+        while let parentID = current {
+            let total = children(of: parentID).reduce(0.0) { $0 + estimate(of: $1) }
+            update(parentID) { $0.estimate = total }
+            current = items.first { $0.id == parentID }?.parentID
+        }
     }
 
     private func save() {
